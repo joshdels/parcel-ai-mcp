@@ -1,0 +1,13 @@
+[project]
+name = "parcel-ai-mcp"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "dotenv>=0.9.9",
+    "fastapi>=0.141.1",
+    "geoalchemy2>=0.20.0",
+    "mcp[cli]>=2.0.0",
+    "psycopg[binary]>=3.3.4",
+    "sqlalchemy>=2.0.52",
+    "uvicorn[standard]>=0.52.1",
+]
