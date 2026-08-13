@@ -7,9 +7,11 @@ from app.db.models import Parcel
 def get_all_parcels(session: Session):
     """Retrieves all parcels information."""
 
-    statement = select(Parcel).limit(20)
+    statement = select(Parcel, func.ST_AsGeoJSON(Parcel.geom).label("geojson")).limit(
+        20
+    )
 
-    return session.scalars(statement).all()
+    return session.execute(statement).all()
 
 
 def get_parcel_by_prop_id(session: Session, prop_id: str):

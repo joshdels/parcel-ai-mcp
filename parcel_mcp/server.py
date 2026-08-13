@@ -27,7 +27,6 @@ def list_parcels():
                 "owner_name": parcel.owner_name,
                 "market_value": parcel.mkt_value,
                 "situs_address": parcel.situs_addr,
-                "geom": parcel.geom,
             }
             for parcel in parcels
         ]
@@ -45,15 +44,15 @@ def find_parcel_by_prop_id(prop_id: str):
                 "message": f"No parcel found with property ID '{prop_id}'.",
             }
 
-        return [
-            {
-                "property_id": parcel.prop_id,
-                "owner_name": parcel.owner_name,
-                "market_value": parcel.mkt_value,
-                "situs_address": parcel.situs_addr,
-                "geom": parcel.geom,
-            }
-        ]
+    return [
+        {
+            "property_id": parcel.prop_id,
+            "owner_name": parcel.owner_name,
+            "market_value": parcel.mkt_value,
+            "situs_address": parcel.situs_addr,
+            "geom": parcel.geom,
+        }
+    ]
 
 
 @mcp.tool()
