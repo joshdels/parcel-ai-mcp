@@ -13,9 +13,13 @@ from app.service.queries import get_all_parcels
 app = FastAPI()
 
 
-@app.get("/all/parcels")
-def all_parcels(session: Session = Depends(get_session)):
-    parcels = get_all_parcels(session)
+@app.get("/parcels")
+def parcels(
+    min_acres: float | None = None,
+    max_acres: float | None = None,
+    session: Session = Depends(get_session),
+):
+    parcels = get_all_parcels(session, min_acres, max_acres)
 
     return [
         {

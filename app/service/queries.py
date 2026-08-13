@@ -4,22 +4,43 @@ from sqlalchemy.orm import Session
 from app.db.models import Parcel
 
 
-def get_all_parcels(session: Session):
-    """Retrieves all parcels information."""
+def get_parcels(
+    session: Session,
+    min_acres: float | None = None,
+    max_acres: float | None = None,
+):
+    """Retrieves parcels with calculated acreage."""
 
-    statement = select(Parcel, func.ST_AsGeoJSON(Parcel.geom).label("geojson")).limit(
-        20
+    area_acres = func.ST_Area(func.ST_Transform(Parcel.geom, 2277)) / 43560
+
+    statement = select(
+        Parcel,
+        area_acres.label("area_acres"),
+        func.ST_AsGeoJSON(Parcel.geom).label("geojson"),
     )
 
-    return session.execute(statement).all()
+    if min_acres is not None:
+        statement = statement.where(area_acres >= min_acres)
+
+    if max_acres is not None:
+        statement = statement.where(area_acres <= max_acres)
+
+    statement = statement.limit(20)
+
+    return session.execute(statement)
 
 
 def get_parcel_by_prop_id(session: Session, prop_id: str):
     """Retrieves a parcel by property ID."""
 
-    statement = select(Parcel).where(Parcel.prop_id.ilike(prop_id))
+    area_acres = func.ST_Area(func.ST_Transform(Parcel.geom, 2277)) / 43560
 
-    return session.scalars(statement).first()
+    statement = select(
+        Parcel,
+        area_acres.label("area_acres"),
+    ).where(Parcel.prop_id.ilike(prop_id))
+
+    return session.execute(statement).first()
 
 
 def count_all_parcels(session: Session):
@@ -28,3 +49,28 @@ def count_all_parcels(session: Session):
     statement = select(func.count()).select_from(Parcel)
 
     return session.scalar(statement)
+
+
+def get_parcels_by_market_value(
+    session: Session,
+    min_value: float | None = None,
+    max_value: float | None = None,
+):
+    """Returns parcels according to price"""
+
+    area_acres = func.ST_Area(func.ST_Transform(Parcel.geom, 2277)) / 43560
+
+    statement = select(
+        Parcel,
+        area_acres.label("area_acres"),
+    )
+
+    if min_value is not None:
+        statement = statement.where(Parcel.mkt_value >= min_value)
+
+    if max_value is not None:
+        statement = statement.where(Parcel.mkt_value <= max_value)
+
+    statement = statement.limit(20)
+
+    return session.execute(statement).all()
