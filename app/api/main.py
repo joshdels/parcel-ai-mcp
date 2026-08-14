@@ -1,33 +1,87 @@
-import json
-import sys
-
-from pathlib import Path
-from fastapi import FastAPI, Depends
+from fastapi import Depends, FastAPI, HTTPException, Response
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from app.db.database import get_session
-from app.service.queries import get_all_parcels
 
 app = FastAPI()
 
 
-@app.get("/parcels")
-def parcels(
-    min_acres: float | None = None,
-    max_acres: float | None = None,
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+TILE_SQL = text("""
+    SELECT ST_AsMVT(tile, 'williamson_parcels')
+    FROM (
+        SELECT
+            prop_id,
+            ST_AsMVTGeom(
+                geom_3857,
+                ST_TileEnvelope(:z, :x, :y),
+                4096,
+                64,
+                true
+            ) AS geom
+        FROM williamson_parcels
+        WHERE geom_3857 && ST_TileEnvelope(:z, :x, :y)
+    ) AS tile
+""")
+
+
+@app.get("/tiles/{z}/{x}/{y}.pbf")
+def parcel_tile(
+    z: int,
+    x: int,
+    y: int,
     session: Session = Depends(get_session),
 ):
-    parcels = get_all_parcels(session, min_acres, max_acres)
+    """
+    Returns a Mapbox Vector Tile containing parcels
+    for the requested XYZ tile.
+    """
 
-    return [
+    # Don't generate parcel tiles at extremely low zoom levels.
+    if z < 10:
+        return Response(
+            content=b"",
+            media_type="application/vnd.mapbox-vector-tile",
+        )
+
+    # Validate XYZ tile coordinates.
+    max_tile = 2**z - 1
+
+    if x < 0 or x > max_tile:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid tile x coordinate.",
+        )
+
+    if y < 0 or y > max_tile:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid tile y coordinate.",
+        )
+
+    result = session.execute(
+        TILE_SQL,
         {
-            "property_id": parcel.prop_id,
-            "owner_name": parcel.owner_name,
-            "market_value": parcel.mkt_value,
-            "situs_address": parcel.situs_addr,
-            "geom": json.loads(geojson) if geojson else None,
-        }
-        for parcel, geojson in parcels
-    ]
+            "z": z,
+            "x": x,
+            "y": y,
+        },
+    ).scalar()
+
+    return Response(
+        content=result or b"",
+        media_type="application/vnd.mapbox-vector-tile",
+        headers={
+            "Cache-Control": "public, max-age=3600",
+        },
+    )

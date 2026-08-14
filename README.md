@@ -1,8 +1,25 @@
 # Parcel AI MCP 
 
 ## Techstack
-1. Postgres/PostGIS
-2. SQL Alchemy
-3. MCP SDK python
-4. LLM AI Claude
-5. FastAPI 
+1. UV python
+2. Postgres/PostGIS
+3. SQL Alchemy
+4. MCP SDK python
+5. LLM AI Claude
+6. FastAPI 
+
+
+## To Start
+
+```shell
+uv sync
+uv venv 
+```
+
+```shell
+make dev 
+make install
+make api
+```
+
+then open claude code desktop

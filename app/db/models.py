@@ -17,4 +17,7 @@ class Parcel(Base):
     mkt_value: Mapped[float] = mapped_column(Float)
     situs_addr: Mapped[str] = mapped_column(String)
 
-    geom: Mapped[Geometry] = mapped_column(Geometry("MULTIPOLYGON", srid=4326))
+    geom: Mapped[Geometry] = mapped_column(
+        Geometry("MULTIPOLYGON", srid=4326),
+        index=True,
+    )
