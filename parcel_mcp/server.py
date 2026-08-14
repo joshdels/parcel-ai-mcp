@@ -1,11 +1,16 @@
 import sys
 import httpx
+import smtplib
+import os
 
 from pathlib import Path
 from mcp.server import MCPServer
 from sqlalchemy.orm import Session
+from email.message import EmailMessage
+from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+BASE_DIR = Path(__file__).resolve().parents[2]
 
 from app.db.database import engine
 from app.service.queries import (
@@ -13,6 +18,11 @@ from app.service.queries import (
     get_parcel_by_prop_id,
     count_all_parcels,
 )
+
+load_dotenv(BASE_DIR / ".env")
+
+print("SMTP USER:", os.getenv("SMTP_USERNAME"))
+print("SMTP PASSWORD EXISTS:", bool(os.getenv("SMTP_PASSWORD")))
 
 mcp = MCPServer("WilliamsonParcelBot")
 
@@ -63,12 +73,12 @@ def list_parcels(
 
 @mcp.tool()
 def find_parcel_by_prop_id(prop_id: str):
-    '''
+    """
     Retrives a single parcel
-    
-    Args: 
+
+    Args:
         prod_id: str -> property id example R011094
-    '''
+    """
 
     with Session(engine) as session:
         result = get_parcel_by_prop_id(session, prop_id)
@@ -117,3 +127,38 @@ async def zoom_to_parcel(prop_id: str):
     response.raise_for_status()
 
     return f"Map zoom command sent for {prop_id}"
+
+
+@mcp.tool()
+def send_email(
+    recipient: str,
+    subject: str,
+    message: str,
+):
+    """Send an email using SMTP."""
+
+    sender = os.environ["SMTP_USERNAME"]
+    password = os.environ["SMTP_PASSWORD"]
+
+    email = EmailMessage()
+    email["From"] = sender
+    email["To"] = recipient
+    email["Subject"] = subject
+    email.set_content(message)
+
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+            smtp.starttls()
+            smtp.login(sender, password)
+            smtp.send_message(email)
+
+        return {
+            "success": True,
+            "message": f"Email sent successfully to {recipient}",
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+        }
