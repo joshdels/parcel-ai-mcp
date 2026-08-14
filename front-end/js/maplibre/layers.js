@@ -41,7 +41,7 @@ export function loadLayer(map) {
     map.getCanvas().style.cursor = "";
   });
 
-  map.on("click", "parcels-fill", (event) => {
+  map.on("click", "parcels-fill", async (event) => {
     const feature = event.features?.[0];
 
     if (!feature) {
@@ -49,16 +49,93 @@ export function loadLayer(map) {
     }
 
     const propId = feature.properties?.prop_id;
+    const propOwner = feature.properties?.owner_name;
+    const propVal = feature.properties?.mkt_value;
+    const propSitus = feature.properties?.situs_addr;
+
+    console.log(propId, propOwner);
+
+    if (!propId) {
+      console.error("Clicked parcel has no prop_id.");
+      return;
+    }
+
+    // Get the authoritative parcel geometry from FastAPI
+    const response = await fetch(`http://127.0.0.1:8000/parcel/${propId}`);
+
+    if (!response.ok) {
+      console.error(`Parcel ${propId} not found.`);
+      return;
+    }
+
+    const parcel = await response.json();
+
+    // Use the SAME selection mechanism as zoomToParcel()
+    const selectedFeature = {
+      type: "Feature",
+      properties: {
+        prop_id: parcel.prop_id,
+        owner_name: parcel.owner_name,
+        mkt_value: parcel.mkt_value,
+        situs_addr: parcel.situs_addr,
+      },
+      geometry: parcel.geometry,
+    };
+
+    selectParcel(map, selectedFeature);
 
     new maplibregl.Popup()
       .setLngLat(event.lngLat)
       .setHTML(
         `
-        <strong>Property ID</strong><br>
-        ${propId ?? "Unknown"}
+      <strong>Property ID</strong><br>
+      ${propId ?? "Unknown"}<br>
+
+      ${propOwner ?? "Unknown"}<br>
+
+      $ ${propVal ?? "Unknown"}<br>
+
+      ${propSitus ?? "Unknown"}<br>
       `,
       )
       .addTo(map);
+  });
+}
+
+/**
+ * Set the single orange selected parcel.
+ *
+ * Everything that wants to highlight a parcel should
+ * use this function.
+ */
+export function selectParcel(map, feature) {
+  const source = map.getSource("selected-parcel");
+
+  if (!source) {
+    console.error("selected-parcel source not found.");
+    return;
+  }
+
+  source.setData({
+    type: "Feature",
+    properties: feature.properties ?? {},
+    geometry: feature.geometry,
+  });
+}
+
+/**
+ * Remove the orange selected parcel.
+ */
+export function clearSelectedParcel(map) {
+  const source = map.getSource("selected-parcel");
+
+  if (!source) {
+    return;
+  }
+
+  source.setData({
+    type: "FeatureCollection",
+    features: [],
   });
 }
 

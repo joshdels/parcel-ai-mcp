@@ -8,8 +8,10 @@ def get_parcels(
     session: Session,
     min_acres: float | None = None,
     max_acres: float | None = None,
+    min_value: float | None = None,
+    max_value: float | None = None,
 ):
-    """Retrieves parcels with calculated acreage."""
+    """Retrieves parcels with calculated acreage or market_value."""
 
     area_acres = func.ST_Area(func.ST_Transform(Parcel.geom, 2277)) / 43560
 
@@ -24,6 +26,12 @@ def get_parcels(
 
     if max_acres is not None:
         statement = statement.where(area_acres <= max_acres)
+
+    if min_value is not None:
+        statement = statement.where(Parcel.mkt_value >= min_value)
+
+    if max_value is not None:
+        statement = statement.where(Parcel.mkt_value <= max_value)
 
     statement = statement.limit(20)
 
@@ -52,28 +60,3 @@ def count_all_parcels(session: Session):
     statement = select(func.count()).select_from(Parcel)
 
     return session.scalar(statement)
-
-
-def get_parcels_by_market_value(
-    session: Session,
-    min_value: float | None = None,
-    max_value: float | None = None,
-):
-    """Returns parcels according to price"""
-
-    area_acres = func.ST_Area(func.ST_Transform(Parcel.geom, 2277)) / 43560
-
-    statement = select(
-        Parcel,
-        area_acres.label("area_acres"),
-    )
-
-    if min_value is not None:
-        statement = statement.where(Parcel.mkt_value >= min_value)
-
-    if max_value is not None:
-        statement = statement.where(Parcel.mkt_value <= max_value)
-
-    statement = statement.limit(20)
-
-    return session.execute(statement).all()

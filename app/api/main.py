@@ -35,6 +35,7 @@ TILE_SQL = text("""
             mkt_value,
             owner_name,
             situs_addr,
+            
 
             ST_AsMVTGeom(
                 geom_3857,

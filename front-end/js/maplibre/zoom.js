@@ -1,4 +1,5 @@
 import * as maplibregl from "https://unpkg.com/maplibre-gl@^6.0.0/dist/maplibre-gl.mjs";
+import { selectParcel } from "./layers.js";
 
 export async function zoomToParcel(map, parcelId) {
   const response = await fetch(`http://127.0.0.1:8000/parcel/${parcelId}`);
@@ -10,16 +11,21 @@ export async function zoomToParcel(map, parcelId) {
 
   const parcel = await response.json();
 
-  // Highlight parcel
-  const source = map.getSource("selected-parcel");
-
-  source.setData({
+  // Convert API response into a GeoJSON Feature
+  const feature = {
     type: "Feature",
     properties: {
       prop_id: parcel.prop_id,
+      owner_name: parcel.owner_name,
+      mkt_value: parcel.mkt_value,
+      situs_addr: parcel.situs_addr,
     },
     geometry: parcel.geometry,
-  });
+  };
+
+  // This automatically removes the previous orange parcel
+  // and makes this parcel the ONLY orange parcel.
+  selectParcel(map, feature);
 
   // Get coordinates
   const coordinates = [];

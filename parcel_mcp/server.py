@@ -11,7 +11,6 @@ from app.db.database import engine
 from app.service.queries import (
     get_parcels,
     get_parcel_by_prop_id,
-    get_parcels_by_market_value,
     count_all_parcels,
 )
 
@@ -22,13 +21,26 @@ mcp = MCPServer("WilliamsonParcelBot")
 def list_parcels(
     min_acres: float | None = None,
     max_acres: float | None = None,
+    min_value: float | None = None,
+    max_value: float | None = None,
 ):
+    """
+    Retrieves the parcels
+
+    Args:
+        min_acres/max_acres: for the area.
+        min_value/max_value: for market value in dollars.
+
+    """
+
     try:
         with Session(engine) as session:
             parcels = get_parcels(
                 session,
                 min_acres,
                 max_acres,
+                min_value,
+                max_value,
             )
 
             return [
@@ -51,6 +63,13 @@ def list_parcels(
 
 @mcp.tool()
 def find_parcel_by_prop_id(prop_id: str):
+    '''
+    Retrives a single parcel
+    
+    Args: 
+        prod_id: str -> property id example R011094
+    '''
+
     with Session(engine) as session:
         result = get_parcel_by_prop_id(session, prop_id)
 
@@ -73,32 +92,9 @@ def find_parcel_by_prop_id(prop_id: str):
 
 
 @mcp.tool()
-def find_parcel_by_market_value(
-    min_value: float | None = None,
-    max_value: float | None = None,
-):
-    with Session(engine) as session:
-        parcels = get_parcels_by_market_value(
-            session,
-            min_value,
-            max_value,
-        )
-
-        return [
-            {
-                "found": True,
-                "property_id": parcel.prop_id,
-                "owner_name": parcel.owner_name,
-                "market_value": parcel.mkt_value,
-                "situs_address": parcel.situs_addr,
-                "area_acres": area_acres,
-            }
-            for parcel, area_acres in parcels
-        ]
-
-
-@mcp.tool()
 def get_count_parcels():
+    """Count all the present parcels"""
+
     with Session(engine) as session:
         count = count_all_parcels(session)
 
