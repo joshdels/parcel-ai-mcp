@@ -22,6 +22,10 @@ TILE_SQL = text("""
     FROM (
         SELECT
             prop_id,
+            mkt_value,
+            owner_name,
+            situs_addr,
+
             ST_AsMVTGeom(
                 geom_3857,
                 ST_TileEnvelope(:z, :x, :y),

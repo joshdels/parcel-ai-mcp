@@ -84,6 +84,7 @@ map.on("load", () => {
         `
         <strong>Property ID</strong><br>
         ${propId ?? "Unknown"}
+        
       `,
       )
       .addTo(map);
