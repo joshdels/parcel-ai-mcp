@@ -1,92 +1,28 @@
-import * as maplibregl from "https://unpkg.com/maplibre-gl@^6.0.0/dist/maplibre-gl.mjs";
+import { createMap } from "./maplibre/createMap.js";
+import { loadLayer, loadSelectedParcelLayer } from "./maplibre/layers.js";
+import { zoomToParcel } from "./maplibre/zoom.js";
+import { connectWebSocket, sendCommand } from "./websocket.js";
 
-export const map = new maplibregl.Map({
-  container: "map",
-  center: [-97.7, 30.6],
-  zoom: 10,
+const map = createMap();
 
-  style: {
-    version: 8,
-
-    sources: {
-      osm: {
-        type: "raster",
-        tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-        tileSize: 256,
-      },
-    },
-
-    layers: [
-      {
-        id: "osm",
-        type: "raster",
-        source: "osm",
-      },
-    ],
-  },
-});
+let socket;
 
 map.on("load", () => {
-  map.addSource("parcels", {
-    type: "vector",
-    tiles: ["http://127.0.0.1:8000/tiles/{z}/{x}/{y}.pbf"],
-    minzoom: 10,
-    maxzoom: 20,
-  });
+  console.log("Map loaded");
 
-  map.addLayer({
-    id: "parcels-fill",
-    type: "fill",
-    source: "parcels",
-    "source-layer": "williamson_parcels",
-    minzoom: 12,
-    paint: {
-      "fill-color": "#0080ff",
-      "fill-opacity": 0.25,
-    },
-  });
+  loadLayer(map);
+  loadSelectedParcelLayer(map);
 
-  map.addLayer({
-    id: "parcels-outline",
-    type: "line",
-    source: "parcels",
-    "source-layer": "williamson_parcels",
-    minzoom: 10,
-    paint: {
-      "line-color": "#0080ff",
-      "line-width": 1,
-      "line-opacity": 0.6,
-    },
-  });
-
-  // Change cursor when hovering over a parcel.
-  map.on("mouseenter", "parcels-fill", () => {
-    map.getCanvas().style.cursor = "pointer";
-  });
-
-  map.on("mouseleave", "parcels-fill", () => {
-    map.getCanvas().style.cursor = "";
-  });
-
-  // Click parcel.
-  map.on("click", "parcels-fill", (event) => {
-    const feature = event.features?.[0];
-
-    if (!feature) {
-      return;
+  socket = connectWebSocket(async (message) => {
+    if (message.action === "zoom_to_parcel") {
+      await zoomToParcel(map, message.parcel_id);
     }
+  });
 
-    const propId = feature.properties?.prop_id;
-
-    new maplibregl.Popup()
-      .setLngLat(event.lngLat)
-      .setHTML(
-        `
-        <strong>Property ID</strong><br>
-        ${propId ?? "Unknown"}
-        
-      `,
-      )
-      .addTo(map);
+  socket.addEventListener("open", () => {
+    sendCommand(socket, {
+      action: "zoom_to_parcel",
+      parcel_id: "R039385",
+    });
   });
 });

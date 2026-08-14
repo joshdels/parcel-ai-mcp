@@ -656,6 +656,7 @@ dependencies = [
     { name = "psycopg", extra = ["binary"] },
     { name = "sqlalchemy" },
     { name = "uvicorn", extra = ["standard"] },
+    { name = "websockets" },
 ]
 
 [package.metadata]
@@ -667,6 +668,7 @@ requires-dist = [
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.4" },
     { name = "sqlalchemy", specifier = ">=2.0.52" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.52.1" },
+    { name = "websockets", specifier = ">=17.0.1" },
 ]
 
 [[package]]

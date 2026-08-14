@@ -1,4 +1,5 @@
 import sys
+import httpx
 
 from pathlib import Path
 from mcp.server import MCPServer
@@ -102,3 +103,21 @@ def get_count_parcels():
         count = count_all_parcels(session)
 
         return [{"parcel_count": count}]
+
+
+@mcp.tool()
+async def zoom_to_parcel(prop_id: str):
+    """Zoom the map to a parcel by property ID."""
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "http://127.0.0.1:8000/map/command",
+            json={
+                "action": "zoom_to_parcel",
+                "parcel_id": prop_id,
+            },
+        )
+
+    response.raise_for_status()
+
+    return f"Map zoom command sent for {prop_id}"

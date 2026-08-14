@@ -1,12 +1,23 @@
-from fastapi import Depends, FastAPI, HTTPException, Response
+import json
+
+from pydantic import BaseModel
+from fastapi import Depends, FastAPI, WebSocket, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from app.db.database import get_session
+from app.service.queries import get_parcel_by_prop_id
+
+
+class MapCommand(BaseModel):
+    action: str
+    parcel_id: str
+
+
+browser_socket = None
 
 app = FastAPI()
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,7 +26,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 TILE_SQL = text("""
     SELECT ST_AsMVT(tile, 'williamson_parcels')
@@ -89,3 +99,61 @@ def parcel_tile(
             "Cache-Control": "public, max-age=3600",
         },
     )
+
+
+@app.get("/parcel/{prop_id}")
+def get_parcel_by_id(
+    prop_id: str,
+    session: Session = Depends(get_session),
+):
+    result = get_parcel_by_prop_id(
+        session=session,
+        prop_id=prop_id,
+    )
+
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Parcel {prop_id} not found",
+        )
+
+    return {
+        "prop_id": result.prop_id,
+        "area_acres": float(result.area_acres),
+        "geometry": json.loads(result.geometry),
+    }
+
+
+@app.post("/map/command")
+async def map_command(command: MapCommand):
+    if browser_socket is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Map browser is not connected",
+        )
+
+    await browser_socket.send_json(command.model_dump())
+
+    return {
+        "status": "sent",
+        "command": command,
+    }
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    global browser_socket
+
+    await websocket.accept()
+
+    browser_socket = websocket
+
+    print("Browser connected")
+
+    try:
+        while True:
+            await websocket.receive_text()
+
+    except Exception:
+        browser_socket = None
+        print("Browser disconnected")

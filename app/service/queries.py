@@ -35,10 +35,13 @@ def get_parcel_by_prop_id(session: Session, prop_id: str):
 
     area_acres = func.ST_Area(func.ST_Transform(Parcel.geom, 2277)) / 43560
 
+    geometry = func.ST_AsGeoJSON(func.ST_Transform(Parcel.geom, 4326))
+
     statement = select(
-        Parcel,
+        Parcel.prop_id,
         area_acres.label("area_acres"),
-    ).where(Parcel.prop_id.ilike(prop_id))
+        geometry.label("geometry"),
+    ).where(Parcel.prop_id == prop_id)
 
     return session.execute(statement).first()
 
